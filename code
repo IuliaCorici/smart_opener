@@ -1,0 +1,163 @@
+// Biblioteca LCD
+#include <SimpleDHT.h>
+
+#define LCD_ON 0
+#define Serial_on 1
+#define forward_pin 8
+#define backward_pin 9
+#define pwm_pin 10
+#define plus_button_pin 5
+#define minus_button_pin 12
+
+#if LCD_ON
+#include <LiquidCrystal.h>
+
+// Initializam biblioteca LCD
+LiquidCrystal LCD(12,11,5,4,3,2);
+#endif
+
+ 
+
+ 
+
+// Definim pinul analogic A0 ca intrare a senzorului de temperatura
+const int SensorTempPin=7;
+SimpleDHT11 dht11;
+
+ 
+
+const int Forward = forward_pin;
+const int Backward = backward_pin;
+const int pwm = pwm_pin;
+const int plus = plus_button_pin;
+const int minus = minus_button_pin;
+
+ 
+ 
+
+void setup() {
+  #if Serial_on
+    Serial.begin(115200);
+  #endif
+  
+    pinMode(Forward , OUTPUT);
+    pinMode(Backward , OUTPUT);
+    pinMode(pwm, OUTPUT) ;
+    pinMode(plus, INPUT);
+    pinMode(minus, INPUT);
+  
+
+     #if LCD_ON
+    LCD.begin(16,2); // setam numarul de coloane si linii pt LCD
+  
+    LCD.print("Temperatura SET:");  // Afiseaza mesaj pe LCD
+
+    LCD.setCursor(0,1);  // Schimba cursorul la prima coloana si a doua linie pe LCD
+  
+    LCD.print("      C        C"); // Afiseaza mesaj pe LCD
+     #endif
+   
+}
+int state = 0;
+float set_temp = 31;
+ 
+
+void loop() {
+    byte TemperaturaC = 0;
+    byte humidity = 0;
+
+    // Scade temperatura setata
+     if(digitalRead(minus)) {
+        delay(1);
+        if(digitalRead(minus)) {
+          set_temp -= 1;
+          delay(100);
+        }
+     }
+  
+     // Creste temperatura setata
+     if(digitalRead(plus)) {
+      delay(1);
+      if (digitalRead(plus)) {
+       set_temp += 1;
+       delay(100);
+      }
+     }
+    
+    // Citeste tensiunea pe senzorul de temperatura
+    int SensorTempTensiune=analogRead(SensorTempPin);
+    
+    dht11.read(SensorTempPin,&TemperaturaC, &humidity,NULL);
+
+ 
+      // Convertim din grade Celsius in grade Fahrenheit
+     float TemperaturaF=(TemperaturaC*9/5)+32;
+
+       #if Serial_on
+        Serial.print("Temperatura actuala:");
+        
+        Serial.print(TemperaturaC);
+        
+        Serial.print(" C   Temperatura de prag:");
+        
+        Serial.print(set_temp);
+        
+        Serial.print(" C \n");
+        
+        delay(2000);
+ 
+     #endif
+ 
+    #if LCD_on
+      LCD.print("Temperatura SET:");
+      
+      // Schimba cursorul la prima coloana si a doua linie pe LCD
+      LCD.setCursor(0,1);
+
+ 
+
+      // Afisam temperatura in grade Celsius
+      LCD.print(TemperaturaC);
+
+ 
+
+      //Schimba cursorul la a 10 coloana si a doua linie pe LCD
+      LCD.setCursor(9,1);
+
+ 
+
+      // Afisam temperatura setata
+      LCD.print(set_temp);
+      #endif
+    
+  if (TemperaturaC < set_temp && state == 1)
+  { 
+    state = 0;
+    digitalWrite(Forward,HIGH) ;
+    digitalWrite(Backward,LOW) ;
+    delay(20000) ;
+    digitalWrite(Forward,HIGH) ;
+    digitalWrite(Backward,HIGH) ;
+    
+  }
+  // Verificam daca Temperatura citita de senzor este mai mare
+     // decat temperatura setata. Daca da, atunci motorul merge la turatie maxima
+     // pentru 3 secunde deschizand geamul si apoi se opreste.
+ 
+
+  if (TemperaturaC > set_temp && state == 0)
+  { 
+    state = 1;
+    digitalWrite(Forward,LOW) ; 
+    digitalWrite(Backward,HIGH) ;
+    delay(20000) ;
+    digitalWrite(Forward,HIGH) ;
+    digitalWrite(Backward,HIGH) ;
+    
+  }  
+  // Verificam daca Temperatura citita de senzor este mai mica
+  // decat temperatura setata. Daca da, atunci motorul merge in sens opus
+  //  la turatie maxima pentru 3 secunde inchizand geamul si 
+  // apoi se opreste.
+  
+}
